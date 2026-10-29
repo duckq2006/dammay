@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeWine – Hệ thống quản lý bán hàng rượu ngoại</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Nhúng thư viện Supabase phiên bản web (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 1. Nhúng thư viện Supabase vào HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 2. Đoạn code kết nối và gọi dữ liệu của bạn -->
+  <script>
+    // Thay thông tin Project URL và Anon Key của bạn vào đây
+    const SUPABASE_URL = 'https://eieokdpkfvfbtfoinnwj.supabase.co';
+    const SUPABASE_ANON_KEY = 'MÃ_ANON_KEY_CỦA_BẠN';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Ví dụ hàm lấy dữ liệu từ bảng 'dulieu' bạn vừa tạo trên Supabase
+    async function layDuLieu() {
+      let { data, error } = await supabase.from('dulieu').select('*');
+      if (error) {
+        console.log('Lỗi:', error);
+      } else {
+        console.log('Dữ liệu lấy từ Supabase:', data);
+      }
+    }
+
+    // Chạy hàm khi trang web vừa mở lên
+    layDuLieu();
+  </script>
+</head>
+
+<body>
+
+  <nav>
+    <div class="nav-brand">🍷 WeWine</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('login')">Đăng nhập</button>
+      <button class="nav-tab" onclick="showPage('products')">Sản phẩm</button>
+      <button class="nav-tab" onclick="showPage('order')">Đặt hàng</button>
+      <button class="nav-tab" onclick="showPage('manage')">Quản lý đơn</button>
+      <button class="nav-tab" onclick="showPage('stats')">Thống kê</button>
+    </div>
+  </nav>
+
+  <!-- ======= UC1: ĐĂNG NHẬP ======= -->
+  <div id="page-login" class="page active">
+    <div class="login-wrap">
+      <div class="login-logo">
+        <div class="login-logo-text">WeWine</div>
+        <div class="login-logo-sub">Hệ thống quản lý rượu ngoại</div>
+      </div>
+      <div class="card">
+        <div class="tabs-login">
+          <button class="tab-login active" onclick="switchTab('login-form','register-form',this)">Đăng nhập</button>
+          <button class="tab-login" onclick="switchTab('register-form','login-form',this)">Đăng ký</button>
+        </div>
+
+        <!-- Login form -->
+        <div id="login-form">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="email@example.com" value="khachhang@wewine.vn">
+          </div>
+          <div class="field">
+            <label>Mật khẩu</label>
+            <input type="password" id="login-pass" placeholder="••••••••" value="123456">
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <label
+              style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;">
+              <input type="checkbox" checked> Ghi nhớ đăng nhập
+            </label>
+            <a href="#" style="font-size:13px;color:var(--wine);font-family:Arial,sans-serif;">Quên mật khẩu?</a>
+          </div>
+          <button class="btn btn-wine" style="width:100%;justify-content:center;" onclick="doLogin()">Đăng nhập</button>
+          <div class="divider">hoặc đăng nhập bằng</div>
+          <button class="social-btn" onclick="toast('Đăng nhập Facebook thành công!')">📘 Đăng nhập bằng
+            Facebook</button>
+          <button class="social-btn" onclick="toast('Đăng nhập Google thành công!')">🔴 Đăng nhập bằng Gmail</button>
+        </div>
+
+        <!-- Register form -->
+        <div id="register-form" style="display:none;">
+          <div id="reg-alert" style="display:none;"></div>
+          <div class="row2">
+            <div class="field"><label>Họ tên</label><input type="text" placeholder="Nguyễn Văn A"></div>
+            <div class="field"><label>Số điện thoại</label><input type="text" placeholder="0901234567"></div>
+          </div>
+          <div class="field"><label>Email</label><input type="email" placeholder="email@example.com"></div>
+          <div class="row2">
+            <div class="field"><label>Mật khẩu</label><input type="password" placeholder="••••••••"></div>
+            <div class="field"><label>Xác nhận mật khẩu</label><input type="password" placeholder="••••••••"></div>
+          </div>
+          <button class="btn btn-wine" style="width:100%;justify-content:center;margin-top:4px;"
+            onclick="doRegister()">Tạo tài khoản</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= UC2: XEM SẢN PHẨM / TÌM KIẾM ======= -->
+  <div id="page-products" class="page">
+    <div class="page-title">Danh mục rượu ngoại</div>
+    <div class="page-sub">UC2 – Xem chi tiết & tìm kiếm sản phẩm · Khách hàng</div>
+
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Tìm kiếm rượu theo tên, xuất xứ..." oninput="filterProducts()">
+      <select id="sort-select" onchange="filterProducts()" style="width:auto;">
+        <option value="">Sắp xếp</option>
+        <option value="asc">Giá tăng dần</option>
+        <option value="desc">Giá giảm dần</option>
+      </select>
+      <button class="btn btn-wine btn-sm" onclick="filterProducts()">🔍 Tìm</button>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-chip active" onclick="setFilter('all',this)">Tất cả</button>
+      <button class="filter-chip" onclick="setFilter('red',this)">Rượu đỏ</button>
+      <button class="filter-chip" onclick="setFilter('white',this)">Rượu trắng</button>
+      <button class="filter-chip" onclick="setFilter('champagne',this)">Champagne</button>
+      <button class="filter-chip" onclick="setFilter('whisky',this)">Whisky</button>
+    </div>
+
+    <div class="product-grid" id="product-grid"></div>
+  </div>
+
+  <!-- ======= UC3: ĐẶT HÀNG ONLINE ======= -->
+  <div id="page-order" class="page">
+    <div class="page-title">Đặt hàng online</div>
+    <div class="page-sub">UC3 – Quản lý giỏ hàng & thanh toán · Khách hàng</div>
+
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:24px;">
+      <div>
+        <h3>🛒 Giỏ hàng của bạn</h3>
+        <div class="card" id="cart-list"></div>
+      </div>
+      <div>
+        <h3>📋 Thông tin đặt hàng</h3>
+        <div class="card">
+          <div class="field"><label>Họ tên người nhận</label><input type="text" value="Nguyễn Minh Tuấn"></div>
+          <div class="field"><label>Số điện thoại</label><input type="text" value="0901 234 567"></div>
+          <div class="field"><label>Địa chỉ giao hàng</label><textarea rows="2"
+              style="resize:none;">123 Nguyễn Trãi, Q.1, TP.HCM</textarea></div>
+          <div class="field"><label>Phương thức thanh toán</label>
+            <select id="payment-method">
+              <option>💳 Thanh toán tiền mặt khi nhận hàng</option>
+              <option>🏦 Chuyển khoản ngân hàng</option>
+              <option>💰 Ví điện tử (MoMo/ZaloPay)</option>
+            </select>
+          </div>
+          <div class="field"><label>Ghi chú</label><textarea rows="2" placeholder="Yêu cầu đặc biệt..."
+              style="resize:none;"></textarea></div>
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+            <div
+              style="display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:13px;margin-bottom:6px;">
+              <span style="color:var(--muted)">Tạm tính</span><span id="subtotal">0₫</span>
+            </div>
+            <div
+              style="display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:13px;margin-bottom:6px;">
+              <span style="color:var(--muted)">Phí giao hàng</span><span>30.000₫</span>
+            </div>
+            <div
+              style="display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:var(--wine);margin-top:10px;">
+              <span>Tổng cộng</span><span id="total-price">0₫</span>
+            </div>
+          </div>
+          <button class="btn btn-wine" style="width:100%;justify-content:center;margin-top:16px;"
+            onclick="placeOrder()">✅ Xác nhận đặt hàng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order success modal -->
+    <div class="modal-overlay" id="success-modal">
+      <div class="modal" style="text-align:center;">
+        <div style="font-size:56px;margin-bottom:12px;">🎉</div>
+        <h3 style="font-size:20px;margin-bottom:8px;">Đặt hàng thành công!</h3>
+        <p style="color:var(--muted);font-family:Arial,sans-serif;font-size:14px;margin-bottom:16px;">Mã đơn hàng:
+          <strong style="color:var(--wine);">#WW-20240612</strong>
+        </p>
+        <p style="color:var(--muted);font-family:Arial,sans-serif;font-size:13px;margin-bottom:20px;">Chúng tôi sẽ liên
+          hệ xác nhận và giao hàng trong 2–4 giờ.</p>
+        <button class="btn btn-wine" onclick="closeModal()">Theo dõi đơn hàng →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= UC4: QUẢN LÝ ĐƠN HÀNG (nhân viên) ======= -->
+  <div id="page-manage" class="page">
+    <div class="page-title">Quản lý đơn hàng</div>
+    <div class="page-sub">UC4 – Xác nhận, cập nhật trạng thái đơn hàng · Nhân viên bán hàng</div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card">
+        <div class="stat-label">Chờ xác nhận</div>
+        <div class="stat-value" style="color:#D97706;">8</div>
+        <div class="stat-sub">đơn hàng mới</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Đang giao</div>
+        <div class="stat-value" style="color:#2563EB;">14</div>
+        <div class="stat-sub">đơn đang xử lý</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hoàn thành</div>
+        <div class="stat-value" style="color:#16A34A;">127</div>
+        <div class="stat-sub">tháng này</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Đã huỷ</div>
+        <div class="stat-value" style="color:#DC2626;">3</div>
+        <div class="stat-sub">tháng này</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border);">
+        <input type="text" placeholder="Tìm mã đơn, tên khách..." style="flex:1;max-width:320px;">
+        <select style="width:auto;">
+          <option>Tất cả trạng thái</option>
+          <option>Chờ xác nhận</option>
+          <option>Đang giao</option>
+          <option>Hoàn thành</option>
+          <option>Đã huỷ</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Mã đơn</th>
+            <th>Khách hàng</th>
+            <th>Sản phẩm</th>
+            <th>Tổng tiền</th>
+            <th>Ngày đặt</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="orders-table"></tbody>
+      </table>
+    </div>
+
+    <!-- Order detail modal -->
+    <div class="modal-overlay" id="order-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 style="margin:0;" id="modal-order-title">Chi tiết đơn hàng</h3>
+          <button class="close-btn" onclick="closeOrderModal()">✕</button>
+        </div>
+        <div id="modal-order-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= UC5: THỐNG KÊ (admin) ======= -->
+  <div id="page-stats" class="page">
+    <div class="page-title">Thống kê & Báo cáo</div>
+    <div class="page-sub">UC5 – Thống kê doanh thu, đơn hàng, tồn kho · Admin</div>
+
+    <!-- KPI cards -->
+    <div class="stats-grid" style="margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-label">Doanh thu tháng 6</div>
+        <div class="stat-value">487M ₫</div>
+        <div class="stat-sub">↑ 7% so tháng trước</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tổng đơn hàng</div>
+        <div class="stat-value">152</div>
+        <div class="stat-sub">hoàn thành 127 · huỷ 3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bán chạy nhất</div>
+        <div class="stat-value" style="font-size:18px;">Bordeaux 2018</div>
+        <div class="stat-sub">32 chai trong tháng</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tồn kho</div>
+        <div class="stat-value">284</div>
+        <div class="stat-sub" style="color:#DC2626;">⚠ 2 mặt hàng sắp hết</div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;margin-bottom:20px;">
+
+      <!-- Bar chart - revenue -->
+      <div class="card" style="padding:20px;">
+        <h3 style="margin-bottom:16px;">Doanh thu 6 tháng gần nhất (triệu ₫)</h3>
+        <svg id="bar-svg" viewBox="0 0 420 200" width="100%" style="overflow:visible;display:block;"></svg>
+      </div>
+
+      <!-- Status breakdown -->
+      <div class="card" style="padding:20px;">
+        <h3 style="margin-bottom:16px;">Đơn hàng theo trạng thái</h3>
+        <svg id="pie-svg" viewBox="0 0 200 200" width="100%" style="display:block;max-height:180px;"></svg>
+        <div id="pie-legend" style="margin-top:14px;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Top products table -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div
+        style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;">Top sản phẩm bán chạy</h3>
+        <button class="btn btn-outline btn-sm" onclick="toast('Xuất báo cáo Excel thành công!')">📥 Xuất báo
+          cáo</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Sản phẩm</th>
+            <th>Loại</th>
+            <th>Đã bán</th>
+            <th>Doanh thu</th>
+            <th>Tồn kho</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--gold);font-weight:bold;font-size:16px;">①</td>
+            <td><strong>Château Bordeaux 2018</strong></td>
+            <td><span class="badge badge-info">Vang đỏ</span></td>
+            <td>32 chai</td>
+            <td><strong>96.000.000 ₫</strong></td>
+            <td><span class="badge badge-warn">8 chai</span></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-weight:bold;">②</td>
+            <td>Dom Pérignon 2015</td>
+            <td><span class="badge badge-warn">Champagne</span></td>
+            <td>18 chai</td>
+            <td>126.000.000 ₫</td>
+            <td><span class="badge badge-success">24 chai</span></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-weight:bold;">③</td>
+            <td>Johnnie Walker Blue</td>
+            <td><span class="badge badge-muted">Whisky</span></td>
+            <td>15 chai</td>
+            <td>67.500.000 ₫</td>
+            <td><span class="badge badge-success">31 chai</span></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-weight:bold;">④</td>
+            <td>Chablis Premier Cru</td>
+            <td><span class="badge badge-success">Vang trắng</span></td>
+            <td>12 chai</td>
+            <td>31.200.000 ₫</td>
+            <td><span class="badge badge-danger">3 chai</span></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);font-weight:bold;">⑤</td>
+            <td>Moët &amp; Chandon Brut</td>
+            <td><span class="badge badge-warn">Champagne</span></td>
+            <td>11 chai</td>
+            <td>41.800.000 ₫</td>
+            <td><span class="badge badge-success">19 chai</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
